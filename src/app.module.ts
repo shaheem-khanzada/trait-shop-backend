@@ -16,12 +16,9 @@ import configuration from './config/configuration';
     TraitShopModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
-        console.log('dbUrl', configService.get<string>('databaseUrl'));
-        return {
-          uri: configService.get<string>('databaseUrl'),
-        };
-      },
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('databaseUrl'),
+      }),
       inject: [ConfigService],
     }),
   ],

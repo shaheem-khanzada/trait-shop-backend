@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsDate, IsArray, IsOptional } from 'class-validator';
+import { IsString, IsInt, IsArray, IsOptional } from 'class-validator';
 
 export class CreateTraitShopDto {
   @IsString()
@@ -21,6 +21,5 @@ export class CreateTraitShopDto {
   whitelisted: string[];
 
   @IsOptional()
-  @IsDate()
   expiryDate?: Date;
 }

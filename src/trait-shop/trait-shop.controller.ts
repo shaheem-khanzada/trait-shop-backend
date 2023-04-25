@@ -12,28 +12,29 @@ import { TraitShopService } from './trait-shop.service';
 import { CreateTraitShopDto } from './dto/create-trait-shop.dto';
 import { UpdateTraitShopDto } from './dto/update-trait-shop.dto';
 
-@Controller('trait-shop')
+@Controller('trait')
 export class TraitShopController {
   constructor(private readonly traitShopService: TraitShopService) {}
 
-  @Post()
+  @Post('create')
   create(@Body() createTraitShopDto: CreateTraitShopDto) {
     return this.traitShopService.create(createTraitShopDto);
   }
 
-  @Get(':walletAddress')
+  @Get('walletAddress/:walletAddress')
   findAll(@Param('walletAddress') walletAddress: string) {
+    console.log('findAll runs');
     return this.traitShopService.findAll(walletAddress);
   }
 
-  @Get(':tokenId')
+  @Get('tokenId/:tokenId')
   findOneByTokenId(@Param('tokenId', ParseIntPipe) tokenId: number) {
     return this.traitShopService.findOneByTokenId(tokenId);
   }
 
-  @Get(':id')
+  @Get('id/:id')
   findOneById(@Param('id') id: string) {
-    return this.traitShopService.findOneById(+id);
+    return this.traitShopService.findOneById(id);
   }
 
   @Patch(':id')
@@ -41,11 +42,11 @@ export class TraitShopController {
     @Param('id') id: string,
     @Body() updateTraitShopDto: UpdateTraitShopDto,
   ) {
-    return this.traitShopService.update(+id, updateTraitShopDto);
+    return this.traitShopService.update(id, updateTraitShopDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.traitShopService.remove(+id);
+    return this.traitShopService.remove(id);
   }
 }
