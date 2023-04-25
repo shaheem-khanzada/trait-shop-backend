@@ -1,19 +1,44 @@
+import { Model } from 'mongoose';
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Trait } from './schemas/trait.schema';
 import { CreateTraitShopDto } from './dto/create-trait-shop.dto';
 import { UpdateTraitShopDto } from './dto/update-trait-shop.dto';
 
 @Injectable()
 export class TraitShopService {
+  constructor(@InjectModel(Trait.name) private traitModel: Model<Trait>) {}
+
   create(createTraitShopDto: CreateTraitShopDto) {
-    return 'This action adds a new traitShop';
+    const createdCat = new this.traitModel(createTraitShopDto);
+    return createdCat.save();
   }
 
-  findAll() {
-    return `This action returns all traitShop`;
+  findAll(whitelistedPerson: string): Promise<Trait[]> {
+    const now = new Date();
+    return this.traitModel
+      .find({
+        $and: [
+          {
+            $or: [
+              { whitelisted: { $size: 0 } },
+              { whitelisted: { $in: [whitelistedPerson] } },
+            ],
+          },
+          {
+            $or: [{ expiryDate: null }, { expiryDate: { $gte: now } }],
+          },
+        ],
+      })
+      .exec();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} traitShop`;
+  findOneByTokenId(tokenId: number) {
+    return this.traitModel.findOne({ tokenId }).exec();
+  }
+
+  findOneById(id: number) {
+    return this.traitModel.findById(id).exec();
   }
 
   update(id: number, updateTraitShopDto: UpdateTraitShopDto) {
@@ -21,6 +46,6 @@ export class TraitShopService {
   }
 
   remove(id: number) {
-    return `This action removes a #${id} traitShop`;
+    return this.traitModel.findByIdAndDelete(id).exec();
   }
 }

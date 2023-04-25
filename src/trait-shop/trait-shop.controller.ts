@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { TraitShopService } from './trait-shop.service';
 import { CreateTraitShopDto } from './dto/create-trait-shop.dto';
@@ -20,14 +21,19 @@ export class TraitShopController {
     return this.traitShopService.create(createTraitShopDto);
   }
 
-  @Get()
-  findAll() {
-    return this.traitShopService.findAll();
+  @Get(':walletAddress')
+  findAll(@Param('walletAddress') walletAddress: string) {
+    return this.traitShopService.findAll(walletAddress);
+  }
+
+  @Get(':tokenId')
+  findOneByTokenId(@Param('tokenId', ParseIntPipe) tokenId: number) {
+    return this.traitShopService.findOneByTokenId(tokenId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.traitShopService.findOne(+id);
+  findOneById(@Param('id') id: string) {
+    return this.traitShopService.findOneById(+id);
   }
 
   @Patch(':id')
