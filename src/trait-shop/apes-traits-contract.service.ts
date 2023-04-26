@@ -22,6 +22,17 @@ export class ApesTraitsContractService {
       const totalCount = await this.contract.methods
         .totalSupply(tokenID)
         .call();
+      return parseInt(totalCount);
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  async getBalanceOfOwnerByTokenId(tokenID: number, owner: string) {
+    try {
+      const totalCount = await this.contract.methods
+        .balanceOff(owner, tokenID)
+        .call();
       console.log('totalCount', totalCount);
       return totalCount;
     } catch (e) {

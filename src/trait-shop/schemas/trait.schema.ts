@@ -20,6 +20,12 @@ export class Trait {
   @Prop({ required: true })
   price: number;
 
+  @Prop({ required: true })
+  commission: number;
+
+  @Prop()
+  sponsor: string;
+
   @Prop([String])
   whitelisted: string[];
 
