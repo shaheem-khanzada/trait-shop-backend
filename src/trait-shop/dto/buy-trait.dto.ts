@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsNotEmpty, IsBoolean } from 'class-validator';
+import { IsString, IsInt, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class BuyTraitDto {
@@ -15,9 +15,4 @@ export class BuyTraitDto {
   @IsNotEmpty()
   @IsInt()
   quantity: number;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsBoolean()
-  isOnChain: boolean;
 }

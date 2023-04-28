@@ -1,15 +1,13 @@
-import { IsString, IsInt, IsArray, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsArray,
+  IsOptional,
+  IsNumber,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTraitShopDto {
-  @ApiProperty()
-  @IsString()
-  name: string;
-
-  @ApiProperty()
-  @IsString()
-  uri: string;
-
   @ApiProperty()
   @IsInt()
   maxQuantity: number;
@@ -28,7 +26,7 @@ export class CreateTraitShopDto {
   sponsor: string;
 
   @ApiProperty()
-  @IsInt()
+  @IsNumber()
   price: number;
 
   @IsOptional()

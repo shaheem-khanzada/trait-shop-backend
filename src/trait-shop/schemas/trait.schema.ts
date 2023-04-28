@@ -3,14 +3,8 @@ import { HydratedDocument } from 'mongoose';
 
 export type TraitDocument = HydratedDocument<Trait>;
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: 'traits_sells' })
 export class Trait {
-  @Prop({ required: true })
-  name: string;
-
-  @Prop({ required: true })
-  uri: string;
-
   @Prop({ required: true })
   maxQuantity: number;
 

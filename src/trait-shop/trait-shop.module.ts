@@ -4,13 +4,16 @@ import { TraitShopService } from './trait-shop.service';
 import { TraitShopController } from './trait-shop.controller';
 import { Trait, TraitSchema } from './schemas/trait.schema';
 import { ApesTraitsContractService } from './apes-traits-contract.service';
-import { UserTrait, UserTraitSchema } from './schemas/user-traits.schema';
+import {
+  UserOffChainTrait,
+  UserOffChainTraitSchema,
+} from './schemas/offchain-user-trait.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Trait.name, schema: TraitSchema },
-      { name: UserTrait.name, schema: UserTraitSchema },
+      { name: UserOffChainTrait.name, schema: UserOffChainTraitSchema },
     ]),
   ],
   controllers: [TraitShopController],

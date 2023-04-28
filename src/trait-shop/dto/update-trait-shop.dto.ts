@@ -1,17 +1,13 @@
-import { IsArray, IsOptional, IsInt, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsOptional,
+  IsInt,
+  IsString,
+  IsNumber,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateTraitShopDto {
-  @ApiProperty()
-  @IsOptional()
-  @IsString()
-  name: string;
-
-  @ApiProperty()
-  @IsOptional()
-  @IsString()
-  uri: string;
-
   @ApiProperty()
   @IsOptional()
   @IsInt()
@@ -19,7 +15,7 @@ export class UpdateTraitShopDto {
 
   @ApiProperty()
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   price: number;
 
   @ApiProperty()

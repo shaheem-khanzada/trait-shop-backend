@@ -1,103 +1,180 @@
-import { Model } from 'mongoose';
+import { Model, Connection } from 'mongoose';
 import {
   HttpException,
   HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Trait } from './schemas/trait.schema';
 import { CreateTraitShopDto } from './dto/create-trait-shop.dto';
 import { UpdateTraitShopDto } from './dto/update-trait-shop.dto';
 import { ApesTraitsContractService } from './apes-traits-contract.service';
-import { UserTrait } from './schemas/user-traits.schema';
+import { UserOffChainTrait } from './schemas/offchain-user-trait.schema';
 import { BuyTraitDto } from './dto/buy-trait.dto';
 
 @Injectable()
 export class TraitShopService {
   constructor(
     @InjectModel(Trait.name) private traitModel: Model<Trait>,
-    @InjectModel(UserTrait.name)
-    private userTraitModel: Model<UserTrait>,
+    @InjectModel(UserOffChainTrait.name)
+    private userOffChainTrait: Model<UserOffChainTrait>,
+    @InjectConnection() private connection: Connection,
     private apesTraitContract: ApesTraitsContractService,
-  ) {
-    setTimeout(() => {
-      this.apesTraitContract.getTotalSuppyByTokenId(808).then(console.log);
-    }, 4000);
+  ) {}
+
+  signMessage(body: any) {
+    return this.apesTraitContract.signMessage(body);
+  }
+
+  async findApeTraitById(id: number): Promise<any | null> {
+    const apesTraitsCollection = this.connection.collection('apes_traits');
+    const apesTrait = await apesTraitsCollection.findOne({ id });
+    return apesTrait ? apesTrait : null;
   }
 
   async create(createTraitShopDto: CreateTraitShopDto) {
-    const isAlreadyExist = await this.findOneByTokenId(
-      createTraitShopDto.tokenId,
-    );
+    const { tokenId } = createTraitShopDto;
+    const apeTrait = await this.findApeTraitById(tokenId);
+    if (!apeTrait) {
+      throw new HttpException(
+        `Ape trait with tokenId ${tokenId} not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const isAlreadyExist = await this.findOneByTokenId(tokenId);
     if (isAlreadyExist) {
       throw new HttpException(
-        `Trait with tokenId ${createTraitShopDto.tokenId} already exist`,
-        HttpStatus.CONFLICT,
+        `Trait with tokenId ${tokenId} already exists`,
+        HttpStatus.NOT_FOUND,
       );
     }
     const trait = new this.traitModel(createTraitShopDto);
     return trait.save();
   }
 
-  findAll(whitelistedPerson: string): Promise<Trait[]> {
+  async findAll(whitelistedPerson: string): Promise<Trait[]> {
     const now = new Date();
-    return this.traitModel
-      .find({
-        $and: [
-          {
-            $or: [
-              { whitelisted: { $size: 0 } },
-              { whitelisted: { $in: [whitelistedPerson] } },
+    const traits = await this.traitModel
+      .aggregate([
+        {
+          $match: {
+            $and: [
+              {
+                $or: [
+                  { whitelisted: { $size: 0 } },
+                  { whitelisted: { $in: [whitelistedPerson] } },
+                ],
+              },
+              {
+                $or: [{ expiryDate: null }, { expiryDate: { $gte: now } }],
+              },
             ],
           },
-          {
-            $or: [{ expiryDate: null }, { expiryDate: { $gte: now } }],
+        },
+        {
+          $lookup: {
+            from: 'apes_traits',
+            let: { tokenId: '$tokenId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$id', '$$tokenId'] },
+                },
+              },
+            ],
+            as: 'apeTrait',
           },
-        ],
-      })
+        },
+        {
+          $addFields: {
+            apeTrait: { $arrayElemAt: ['$apeTrait', 0] },
+          },
+        },
+        {
+          $match: {
+            apeTrait: { $ne: null },
+          },
+        },
+      ])
       .exec();
+
+    return traits;
   }
 
   async fetchAllTraitsOwnByUser(
     ownerAddress: string,
-  ): Promise<(Trait & UserTrait)[]> {
-    const traitsOwnByUser = await this.userTraitModel.aggregate([
-      { $match: { owner: ownerAddress } },
+  ): Promise<(Trait & UserOffChainTrait)[]> {
+    const traitsOwnByUser = await this.userOffChainTrait.aggregate([
+      { $match: { wallet: ownerAddress } },
       {
         $lookup: {
-          from: 'traits',
-          localField: 'tokenId',
-          foreignField: 'tokenId',
-          as: 'trait',
+          from: 'apes_traits',
+          let: { id: '$id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$id', '$$id'] },
+              },
+            },
+            {
+              $project: {
+                minted: 0,
+                _id: 0,
+              },
+            },
+          ],
+          as: 'apeTrait',
         },
       },
-      { $unwind: '$trait' },
       {
         $project: {
           _id: 0,
-          name: '$trait.name',
-          uri: '$trait.uri',
-          tokenId: 1,
-          owner: 1,
-          offChain: 1,
-          onChain: 1,
+          minted: 0,
+        },
+      },
+      {
+        $addFields: {
+          apeTrait: { $arrayElemAt: ['$apeTrait', 0] },
+        },
+      },
+      {
+        $match: {
+          apeTrait: { $ne: null },
         },
       },
     ]);
     return traitsOwnByUser;
   }
 
-  findOneByTokenId(tokenId: number): Promise<Trait> {
-    return this.traitModel.findOne({ tokenId }).exec();
+  async findOneByTokenId(tokenId: number) {
+    const trait = await this.traitModel.findOne({ tokenId }).exec();
+    if (!trait) {
+      return new NotFoundException(`Trait with tokenId ${tokenId} not found`);
+    }
+    const apeTrait = await this.findApeTraitById(trait.tokenId);
+    if (!apeTrait) {
+      throw new HttpException(
+        `Ape trait with tokenId ${trait.tokenId} not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return { ...trait.toObject(), apeTrait };
   }
 
-  findOneOwnerTraitByTokenId(tokenId: number): Promise<UserTrait> {
-    return this.userTraitModel.findOne({ tokenId }).exec();
-  }
-
-  findOneById(id: string) {
-    return this.traitModel.findById(id).exec();
+  async findOneById(id: string) {
+    const trait = await this.traitModel.findById(id).exec();
+    if (!trait) {
+      return new NotFoundException(`Trait with ID ${id} not found`);
+    }
+    const apeTrait = await this.findApeTraitById(trait.tokenId);
+    if (!apeTrait) {
+      throw new HttpException(
+        `Ape trait with tokenId ${trait.tokenId} not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return { ...trait.toObject(), apeTrait };
   }
 
   async update(traitId: string, updateTraitShopDto: UpdateTraitShopDto) {
@@ -111,23 +188,12 @@ export class TraitShopService {
     return trait;
   }
 
-  async updateOwnerTraitOffchainCount(tokenId: number, count: number) {
-    const trait = await this.userTraitModel.findOneAndUpdate(
-      { tokenId },
-      { offChain: count },
-    );
-    if (!trait) {
-      throw new NotFoundException(`Trait with ID ${tokenId} not found`);
-    }
-    return trait;
-  }
-
   async sumOffChainForTokenId(tokenId: number): Promise<number> {
     try {
-      const result = await this.userTraitModel
+      const result = await this.userOffChainTrait
         .aggregate([
           { $match: { tokenId: tokenId } },
-          { $group: { _id: null, totalOffChain: { $sum: '$offChain' } } },
+          { $group: { _id: null, totalOffChain: { $sum: '$amount' } } },
         ])
         .exec();
 
@@ -145,9 +211,10 @@ export class TraitShopService {
     return { onChainCount, offChainCount, total: offChainCount + onChainCount };
   }
 
-  async buyTrait({ quantity, owner, tokenId, isOnChain }: BuyTraitDto) {
+  async buyTraitOffChain({ quantity, owner, tokenId }: BuyTraitDto) {
     try {
-      const trait = await this.findOneByTokenId(tokenId);
+      const trait = await this.traitModel.findOne({ tokenId }).exec();
+
       if (!trait) {
         throw new NotFoundException(`Trait with tokenID ${tokenId} not found`);
       }
@@ -161,27 +228,22 @@ export class TraitShopService {
         );
       }
 
-      const existingUserTrait = await this.userTraitModel
-        .findOne({ tokenId, owner })
+      const existingUserTrait = await this.userOffChainTrait
+        .findOne({ id: tokenId, wallet: owner })
         .exec();
 
       if (existingUserTrait) {
-        if (isOnChain) {
-          quantity += existingUserTrait.onChain || 0;
-          existingUserTrait.onChain = quantity;
-        } else {
-          quantity += existingUserTrait.offChain || 0;
-          existingUserTrait.offChain = quantity;
-        }
+        quantity += existingUserTrait.amount || 0;
+        existingUserTrait.amount = quantity;
         return existingUserTrait.save();
       } else {
-        const buyPayload: Partial<UserTrait> = { owner, tokenId };
-        if (isOnChain) {
-          buyPayload.onChain = quantity;
-        } else {
-          buyPayload.offChain = quantity;
-        }
-        const userTrait = new this.userTraitModel(buyPayload);
+        const buyPayload: Partial<UserOffChainTrait> = {
+          wallet: owner,
+          id: tokenId,
+          date: new Date(),
+        };
+        buyPayload.amount = quantity;
+        const userTrait = new this.userOffChainTrait(buyPayload);
         return userTrait.save();
       }
     } catch (error) {

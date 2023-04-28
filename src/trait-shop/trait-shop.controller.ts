@@ -20,8 +20,14 @@ import { BuyTraitDto } from './dto/buy-trait.dto';
 export class TraitShopController {
   constructor(private readonly traitShopService: TraitShopService) {}
 
+  @ApiBody({ description: 'Sign Message' })
+  @Post('sign')
+  signMessage(@Body() signBody: any) {
+    return this.traitShopService.signMessage(signBody);
+  }
+
   @ApiBody({ type: CreateTraitShopDto, description: 'Create Trait' })
-  @Post('create')
+  @Post('sell')
   createTrait(@Body() createTraitShopDto: CreateTraitShopDto) {
     return this.traitShopService.create(createTraitShopDto);
   }
@@ -31,17 +37,13 @@ export class TraitShopController {
     description:
       'Buy traits and save sell record to db so we can how user traits',
   })
-  @Post('buy')
-  buyTrait(@Body() buyBody: BuyTraitDto) {
-    return this.traitShopService.buyTrait(buyBody);
+  @Post('purchase')
+  buyTraitOffChain(@Body() buyBody: BuyTraitDto) {
+    return this.traitShopService.buyTraitOffChain(buyBody);
   }
 
-  @ApiBody({
-    description:
-      'Use to fetch all traits and also pass walletAddress to check if user is whitelisted or not, if whitelisted is empty it will show to all user',
-  })
-  @Get('all')
-  findAllTraits(@Query('walletAddress') walletAddress: string) {
+  @Get('list')
+  findAllTraitsSells(@Query('walletAddress') walletAddress: string) {
     return this.traitShopService.findAll(walletAddress);
   }
 
@@ -50,25 +52,16 @@ export class TraitShopController {
     return this.traitShopService.fetchAllTraitsOwnByUser(walletAddress);
   }
 
-  @ApiBody({
-    description: 'Use to fetch trait by tokenId',
-  })
   @Get('tokenId/:tokenId')
   findOneTraitByTokenId(@Param('tokenId', ParseIntPipe) tokenId: number) {
     return this.traitShopService.findOneByTokenId(tokenId);
   }
 
-  @ApiBody({
-    description: 'Use to fetch trait by _id',
-  })
   @Get('id/:id')
   findOneTraitById(@Param('id') id: string) {
     return this.traitShopService.findOneById(id);
   }
 
-  @ApiBody({
-    description: 'Use to get off-chain and on-chain count of nft by tokenId',
-  })
   @Get('count/:tokenId')
   findTokenMintCount(@Param('tokenId') tokenId: number) {
     return this.traitShopService.getCountByTokenId(tokenId);
@@ -98,9 +91,6 @@ export class TraitShopController {
     return this.traitShopService.updateWhitelisted(id, whitelisted);
   }
 
-  @ApiBody({
-    description: 'Use to delete trait by id',
-  })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.traitShopService.remove(id);
