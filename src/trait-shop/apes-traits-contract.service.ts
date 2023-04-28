@@ -58,7 +58,10 @@ export class ApesTraitsContractService {
       ];
       for (const field of requiredFields) {
         if (!(field in body)) {
-          throw new Error(`Missing required field: ${field}`);
+          throw new HttpException(
+            `Missing required field: ${field}`,
+            HttpStatus.BAD_REQUEST,
+          );
         }
       }
 
@@ -68,7 +71,10 @@ export class ApesTraitsContractService {
       );
       for (const field of addressFields) {
         if (!isAddress(body[field])) {
-          throw new Error(`Invalid address field: ${field}`);
+          throw new HttpException(
+            `Invalid address field: ${field}`,
+            HttpStatus.CONFLICT,
+          );
         }
       }
 
@@ -122,12 +128,16 @@ export class ApesTraitsContractService {
         { type: 'address', value: body.signerAddress },
       );
     } else {
-      throw new HttpException('Invalid message type', HttpStatus.CONFLICT);
+      throw new HttpException(
+        'Invalid type must be one of [buyTraitWithERC20, buyTraitWithETH]',
+        HttpStatus.CONFLICT,
+      );
     }
 
     const privateKey = this.configService.get<string>('walletPrivateKey');
 
     const signature = this.web3.eth.accounts.sign(message, privateKey);
+
     console.log(signature);
     return signature;
   }
