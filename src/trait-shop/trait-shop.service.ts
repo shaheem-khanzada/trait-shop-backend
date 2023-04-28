@@ -1,4 +1,4 @@
-import { Model, Connection } from 'mongoose';
+import { Model, Connection, Types } from 'mongoose';
 import {
   HttpException,
   HttpStatus,
@@ -35,6 +35,26 @@ export class TraitShopService {
 
   async create(createTraitShopDto: CreateTraitShopDto) {
     const { tokenId } = createTraitShopDto;
+    if (
+      Array.isArray(createTraitShopDto.whitelisted) &&
+      createTraitShopDto.whitelisted.length
+    ) {
+      createTraitShopDto.whitelisted = createTraitShopDto.whitelisted.filter(
+        (w) => this.apesTraitContract.isValidAddress(w),
+      );
+    }
+
+    if (
+      !(
+        createTraitShopDto.sponsor &&
+        this.apesTraitContract.isValidAddress(createTraitShopDto.sponsor)
+      )
+    ) {
+      throw new HttpException(
+        `Sponsor is not a valid address`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const apeTrait = await this.findApeTraitById(tokenId);
     if (!apeTrait) {
       throw new HttpException(
@@ -42,15 +62,16 @@ export class TraitShopService {
         HttpStatus.NOT_FOUND,
       );
     }
-    const isAlreadyExist = await this.findOneByTokenId(tokenId);
-    if (isAlreadyExist) {
+    const trait = await this.traitModel.findOne({ tokenId }).exec();
+    if (trait) {
       throw new HttpException(
         `Trait with tokenId ${tokenId} already exists`,
         HttpStatus.NOT_FOUND,
       );
     }
-    const trait = new this.traitModel(createTraitShopDto);
-    return trait.save();
+    const createTrait = new this.traitModel(createTraitShopDto);
+    await createTrait.save();
+    return this.findOneByTokenId(createTrait.tokenId);
   }
 
   async findAll(whitelistedPerson: string): Promise<Trait[]> {
@@ -63,6 +84,9 @@ export class TraitShopService {
               {
                 $or: [
                   { whitelisted: { $size: 0 } },
+                  { whitelisted: null },
+                  { whitelisted: undefined },
+                  { whitelisted: { $exists: false } },
                   { whitelisted: { $in: [whitelistedPerson] } },
                 ],
               },
@@ -163,6 +187,9 @@ export class TraitShopService {
   }
 
   async findOneById(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException(`Invalid ObjectId: ${id}`);
+    }
     const trait = await this.traitModel.findById(id).exec();
     if (!trait) {
       return new NotFoundException(`Trait with ID ${id} not found`);
@@ -178,6 +205,9 @@ export class TraitShopService {
   }
 
   async update(traitId: string, updateTraitShopDto: UpdateTraitShopDto) {
+    if (!Types.ObjectId.isValid(traitId)) {
+      throw new NotFoundException(`Invalid ObjectId: ${traitId}`);
+    }
     const trait = await this.traitModel.findByIdAndUpdate(
       traitId,
       updateTraitShopDto,
@@ -273,7 +303,14 @@ export class TraitShopService {
     return await trait.save();
   }
 
-  remove(_id: string) {
+  async remove(_id: string) {
+    if (!Types.ObjectId.isValid(_id)) {
+      throw new NotFoundException(`Invalid ObjectId: ${_id}`);
+    }
+    const trait = await this.traitModel.findById(_id).exec();
+    if (!trait) {
+      throw new NotFoundException(`Trait with ID ${_id} not found`);
+    }
     return this.traitModel.deleteOne({ _id }).exec();
   }
 }

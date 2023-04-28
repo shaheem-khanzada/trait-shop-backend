@@ -18,6 +18,10 @@ export class ApesTraitsContractService {
     );
   }
 
+  isValidAddress(address: string) {
+    return isAddress(address);
+  }
+
   async getTotalSuppyByTokenId(tokenID: number) {
     try {
       const totalCount = await this.contract.methods
@@ -78,14 +82,25 @@ export class ApesTraitsContractService {
         }
       }
 
-      message = this.web3.utils.soliditySha3(
-        { type: 'uint256', value: body.traitId.toString() },
-        { type: 'address', value: body.sponsorAddress },
-        { type: 'uint256', value: body.commissionPercentage.toString() },
-        { type: 'uint256', value: body.quantity.toString() },
-        { type: 'uint256', value: body.price.toString() },
-        { type: 'address', value: body.erc20TokenAddress },
-        { type: 'address', value: body.signerAddress },
+      message = this.web3.eth.abi.encodeParameters(
+        [
+          'uint256',
+          'address',
+          'uint256',
+          'uint256',
+          'uint256',
+          'address',
+          'address',
+        ],
+        [
+          body.traitId,
+          body.sponsorAddress,
+          body.commissionPercentage,
+          body.quantity,
+          body.price,
+          body.erc20TokenAddress,
+          body.signerAddress,
+        ],
       );
     } else if (body.type === 'buyTraitWithETH') {
       // validate required fields exist
@@ -119,13 +134,16 @@ export class ApesTraitsContractService {
         }
       }
 
-      message = this.web3.utils.soliditySha3(
-        { type: 'uint256', value: body.traitId.toString() },
-        { type: 'address', value: body.sponsorAddress },
-        { type: 'uint256', value: body.commissionPercentage.toString() },
-        { type: 'uint256', value: body.quantity.toString() },
-        { type: 'uint256', value: body.price.toString() },
-        { type: 'address', value: body.signerAddress },
+      message = this.web3.eth.abi.encodeParameters(
+        ['uint256', 'address', 'uint256', 'uint256', 'uint256', 'address'],
+        [
+          body.traitId,
+          body.sponsorAddress,
+          body.commissionPercentage,
+          body.quantity,
+          body.price,
+          body.signerAddress,
+        ],
       );
     } else {
       throw new HttpException(
@@ -134,8 +152,8 @@ export class ApesTraitsContractService {
       );
     }
 
+    message = this.web3.utils.keccak256(message);
     const privateKey = this.configService.get<string>('walletPrivateKey');
-
     const signature = this.web3.eth.accounts.sign(message, privateKey);
 
     console.log(signature);
