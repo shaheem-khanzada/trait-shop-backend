@@ -258,24 +258,15 @@ export class TraitShopService {
         );
       }
 
-      const existingUserTrait = await this.userOffChainTrait
-        .findOne({ id: tokenId, wallet: owner })
-        .exec();
+      const buyPayload: Partial<UserOffChainTrait> = {
+        wallet: owner,
+        id: tokenId,
+        date: new Date(),
+      };
 
-      if (existingUserTrait) {
-        quantity += existingUserTrait.amount || 0;
-        existingUserTrait.amount = quantity;
-        return existingUserTrait.save();
-      } else {
-        const buyPayload: Partial<UserOffChainTrait> = {
-          wallet: owner,
-          id: tokenId,
-          date: new Date(),
-        };
-        buyPayload.amount = quantity;
-        const userTrait = new this.userOffChainTrait(buyPayload);
-        return userTrait.save();
-      }
+      buyPayload.amount = quantity;
+      const userTrait = new this.userOffChainTrait(buyPayload);
+      return userTrait.save();
     } catch (error) {
       // Handle error
       console.error(error);
